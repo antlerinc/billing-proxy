@@ -1,15 +1,12 @@
+from http.server import BaseHTTPRequestHandler
 import os
 import requests
 import json
 
-def handler(request, response):
+def get_billing_data():
     client_id = os.environ.get('CLIENT_ID')
     client_secret = os.environ.get('CLIENT_SECRET')
     tenant_id = os.environ.get('TENANT_ID')
-
-    if not all([client_id, client_secret, tenant_id]):
-        response.status(400).send('Missing environment variables.')
-        return
 
     token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
     token_data = {
@@ -21,11 +18,20 @@ def handler(request, response):
     
     token_response = requests.post(token_url, data=token_data).json()
     if 'access_token' not in token_response:
-        response.status(401).send(f"Auth failed: {token_response}")
-        return
+        return None
     
     headers = {'Authorization': f"Bearer {token_response['access_token']}"}
     billing_url = "https://graph.microsoft.com/v1.0/subscribedSkus"
-    data_response = requests.get(billing_url, headers=headers)
+    return requests.get(billing_url, headers=headers).json()
 
-    response.status(200).json(data_response.json())
+# This is the "app" variable Vercel is looking for
+def app(request, start_response):
+    data = get_billing_data()
+    
+    status = '200 OK' if data else '500 Internal Server Error'
+    response_body = json.dumps(data if data else {"error": "Failed to fetch"})
+    
+    response_headers = [('Content-Type', 'application/json')]
+    start_response(status, response_headers)
+    
+    return [response_body.encode('utf-8')]
