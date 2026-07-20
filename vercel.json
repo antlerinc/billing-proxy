@@ -1,13 +1,5 @@
 {
-  "functions": {
-    "wsgi.py": {
-      "runtime": "vercel-python@3.0"
-    }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "wsgi.py"
-    }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index.py" }
   ]
 }
