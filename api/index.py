@@ -1,13 +1,15 @@
 import os
 import requests
+import json
 
-def handler(request):
+def handler(request, response):
     client_id = os.environ.get('CLIENT_ID')
     client_secret = os.environ.get('CLIENT_SECRET')
     tenant_id = os.environ.get('TENANT_ID')
 
     if not all([client_id, client_secret, tenant_id]):
-        return {'statusCode': 400, 'body': 'Missing environment variables.'}
+        response.status(400).send('Missing environment variables.')
+        return
 
     token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
     token_data = {
@@ -19,14 +21,11 @@ def handler(request):
     
     token_response = requests.post(token_url, data=token_data).json()
     if 'access_token' not in token_response:
-        return {'statusCode': 401, 'body': f"Auth failed: {token_response}"}
+        response.status(401).send(f"Auth failed: {token_response}")
+        return
     
     headers = {'Authorization': f"Bearer {token_response['access_token']}"}
     billing_url = "https://graph.microsoft.com/v1.0/subscribedSkus"
     data_response = requests.get(billing_url, headers=headers)
 
-    return {
-        'statusCode': 200,
-        'headers': {'Content-Type': 'application/json'},
-        'body': data_response.text
-    }
+    response.status(200).json(data_response.json())
